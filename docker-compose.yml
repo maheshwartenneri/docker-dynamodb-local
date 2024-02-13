@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb_data:/data
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb"]
+
+  create-table:
+    image: amazon/aws-cli
+    depends_on:
+      - dynamodb
+    command: >
+      sh -xc 'aws dynamodb create-table
+        --table-name Employee
+        --attribute-definitions AttributeName=employee_id,AttributeType=N
+        --key-schema AttributeName=employee_id,KeyType=HASH
+        --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+        --endpoint-url http://dynamodb:8000 &&
+      aws dynamodb wait table-exists --table-name Employee --endpoint-url http://dynamodb:8000'
+
+  put-items:
+    image: amazon/aws-cli
+    depends_on:
+      - create-table
+    command: >
+      sh -xc 'aws dynamodb put-item
+        --table-name Employee
+        --item "{\"employee_id\":{\"N\":\"1\"},\"name\":{\"S\":\"John Doe\"}}"
+        --endpoint-url http://dynamodb:8000'
+
+volumes:
+  dynamodb_data:
