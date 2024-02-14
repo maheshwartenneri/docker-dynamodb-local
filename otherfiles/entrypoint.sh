@@ -126,3 +126,46 @@ volumes:
   dynamodb-data:
 
 
+#docker4
+
+version: "3.8"
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/data-dynamodb # Persist data across container restarts
+    command: >
+      -jar DynamoDBLocal.jar
+      -sharedDb
+      -optimizeDbBeforeStartup
+      -dbPath /data-dynamodb
+      -port 8000
+
+  aws-cli:
+    image: amazon/aws-cli
+    depends_on:
+      - dynamodb-local
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      sleep 10 &&
+      aws dynamodb create-table \
+        --table-name MyTable \
+        --attribute-definitions \
+            AttributeName=Id,AttributeType=S \
+        --key-schema \
+            AttributeName=Id,KeyType=HASH \
+        --provisioned-throughput \
+            ReadCapacityUnits=5,WriteCapacityUnits=5 &&
+      aws dynamodb put-item \
+        --table-name MyTable \
+        --item '{"Id": {"S": "item1"}, "Name": {"S": "Item One"}}'
+
+volumes:
+  dynamodb-data:
+
+
