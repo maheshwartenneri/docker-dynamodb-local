@@ -57,3 +57,29 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Set entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
+
+
+
+
+#dockercompose other 
+version: "3.8"
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/data-dynamodb # Persist data across container restarts
+    command: |
+      -jar DynamoDBLocal.jar
+        -sharedDb
+        -tableName MyTable
+        -createTable True
+        -createSchema '{ "AttributeDefinitions": [{ "AttributeName": "Id", "AttributeType": "S" }], "KeySchema": [{ "AttributeName": "Id", "KeyType": "HASH" }], "ProvisionedThroughput": { "ReadCapacityUnits": 5, "WriteCapacityUnits": 5 } }'
+        -putItem '{ "Id": {"S": "item1"}, "Name": {"S": "Item One"} }' # Add more items here if needed
+
+volumes:
+  dynamodb-data:
+
+
