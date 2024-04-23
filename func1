@@ -1,0 +1,32 @@
+import boto3
+
+def calculate_partition_size(table_name, partition_key):
+    dynamodb = boto3.client('dynamodb')
+    paginator = dynamodb.get_paginator('query')
+
+    total_size_bytes = 0
+
+    # Iterate through each partition key value
+    for page in paginator.paginate(TableName=table_name, KeyConditionExpression=f"{partition_key} = :val", ExpressionAttributeValues={':val': {'S': 'partition_key_value'}}):
+        for item in page['Items']:
+            total_size_bytes += len(item)
+    
+    total_size_gb = total_size_bytes / (1024 ** 3)  # Convert bytes to gigabytes
+    return total_size_gb
+
+def lambda_handler(event, context):
+    table_name = event['table_name']
+    partition_key = event['partition_key']
+
+    partition_size_gb = calculate_partition_size(table_name, partition_key)
+
+    if partition_size_gb > 8:
+        # Create a CloudWatch metric or perform any other action
+        print(f"Partition size for {partition_key} is over 8GB: {partition_size_gb}GB")
+        # Example: You could emit a CloudWatch metric here to track this event
+    else:
+        print(f"Partition size for {partition_key} is within the 8GB limit: {partition_size_gb}GB")
+
+# Example usage:
+# event = {'table_name': 'your_table_name', 'partition_key': 'your_partition_key'}
+# lambda_handler(event, None)
