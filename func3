@@ -1,0 +1,62 @@
+To create an alert when the size exceeds 8GB, you need to set up a CloudWatch alarm based on the custom metric. Here's how you can modify the code to publish the custom metric and create a CloudWatch alarm:
+
+```python
+import boto3
+
+def publish_custom_metric(metric_name, value, dimensions):
+    cloudwatch = boto3.client('cloudwatch')
+    response = cloudwatch.put_metric_data(
+        Namespace='CustomNamespace',
+        MetricData=[
+            {
+                'MetricName': metric_name,
+                'Value': value,
+                'Unit': 'Gigabytes',
+                'Dimensions': dimensions
+            }
+        ]
+    )
+    return response
+
+def create_cloudwatch_alarm(metric_name, threshold, dimensions):
+    cloudwatch = boto3.client('cloudwatch')
+    alarm_name = f'{metric_name}AboveThreshold'
+    alarm_description = f'Alarm for {metric_name} exceeding {threshold} GB'
+    response = cloudwatch.put_metric_alarm(
+        AlarmName=alarm_name,
+        AlarmDescription=alarm_description,
+        ActionsEnabled=True,
+        MetricName=metric_name,
+        Namespace='CustomNamespace',
+        Statistic='Maximum',
+        Dimensions=dimensions,
+        Period=300,  # 5 minutes
+        EvaluationPeriods=1,
+        Threshold=threshold,
+        ComparisonOperator='GreaterThanThreshold'
+    )
+    return response
+
+def lambda_handler(event, context):
+    # Your existing logic to calculate partition size
+    partition_size_gb = calculate_partition_size(event['table_name'], event['partition_key'])
+
+    # Publish custom metric
+    metric_name = 'PartitionSize'
+    dimensions = [{'Name': 'PartitionKey', 'Value': event['partition_key']}]
+    publish_custom_metric(metric_name, partition_size_gb, dimensions)
+
+    # Create CloudWatch alarm if size exceeds 8GB
+    if partition_size_gb > 8:
+        create_cloudwatch_alarm(metric_name, 8, dimensions)
+
+    return "Success"
+```
+
+In this modified code:
+
+- The `publish_custom_metric` function remains the same, responsible for publishing the custom metric.
+- The `create_cloudwatch_alarm` function creates a CloudWatch alarm based on the custom metric. It takes the metric name, threshold value (8GB in this case), and dimensions as inputs.
+- In the `lambda_handler` function, after publishing the custom metric, it checks if the partition size exceeds 8GB. If it does, it creates a CloudWatch alarm using the `create_cloudwatch_alarm` function.
+
+With this setup, when the partition size exceeds 8GB, a CloudWatch alarm will be triggered, and you'll receive notifications based on your alarm configuration.
