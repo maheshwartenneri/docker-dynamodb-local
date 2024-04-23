@@ -1,0 +1,53 @@
+Yes, you can generate custom metrics using AWS Lambda. Here are the step-by-step instructions to achieve it:
+
+1. **Create a Lambda Function**: Write or modify your existing Lambda function to include the logic for calculating the metric you want to track. This could be the function we discussed earlier that checks the size of data associated with each individual partition key.
+
+2. **Set up IAM Role**: Ensure that your Lambda function has the necessary permissions to publish metrics to CloudWatch. You can create an IAM role with the required permissions and attach it to your Lambda function.
+
+3. **Import Boto3 Library**: Make sure your Lambda function includes the `boto3` library to interact with AWS services like CloudWatch.
+
+4. **Publish Metric to CloudWatch**: Use the `put_metric_data` method from the CloudWatch client to publish your custom metric. This method allows you to specify the metric name, value, dimensions, and other properties.
+
+5. **Define Metric Properties**: Decide on the properties of your custom metric, such as the metric name, unit, dimensions, and namespace. Ensure that these properties align with your monitoring requirements.
+
+6. **Configure CloudWatch Dashboard (Optional)**: You can create a CloudWatch dashboard to visualize your custom metrics alongside other AWS metrics. This step is optional but can be helpful for monitoring and troubleshooting.
+
+7. **Test and Deploy**: Test your Lambda function to ensure it behaves as expected. Once you're satisfied, deploy it to your AWS account.
+
+8. **Set up CloudWatch Alarm (Optional)**: If you want to be alerted when your custom metric exceeds a certain threshold, you can create a CloudWatch alarm based on your custom metric.
+
+Here's a basic example of how you might publish a custom metric from your Lambda function:
+
+```python
+import boto3
+
+def publish_custom_metric(metric_name, value, dimensions):
+    cloudwatch = boto3.client('cloudwatch')
+    response = cloudwatch.put_metric_data(
+        Namespace='CustomNamespace',
+        MetricData=[
+            {
+                'MetricName': metric_name,
+                'Value': value,
+                'Unit': 'Gigabytes',
+                'Dimensions': dimensions
+            }
+        ]
+    )
+    return response
+
+def lambda_handler(event, context):
+    # Your existing logic to calculate partition size
+    partition_size_gb = calculate_partition_size(event['table_name'], event['partition_key'])
+
+    # Publish custom metric
+    metric_name = 'PartitionSize'
+    dimensions = [{'Name': 'PartitionKey', 'Value': event['partition_key']}]
+    response = publish_custom_metric(metric_name, partition_size_gb, dimensions)
+
+    return response
+```
+
+Remember to replace `'CustomNamespace'` with your desired namespace and adjust the metric properties according to your requirements.
+
+After setting up your Lambda function to publish custom metrics, you can view and analyze these metrics in the CloudWatch console.
