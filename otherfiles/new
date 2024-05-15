@@ -13,3 +13,30 @@ def validate_path(path):
         raise ValueError('Access to this path is not allowed')
 
     return abs_path
+
+
+
+import os
+import glob
+
+def sanitize_path(path):
+    # Implement sanitization logic here
+    # Example: Remove any '..' or other malicious sequences
+    sanitized_path = path.replace('..', '').replace('//', '/')
+
+    return sanitized_path
+
+# Example usage:
+dir_name = os.path.dirname(__file__)
+relative_path = 'generated'
+full_path = os.path.join(dir_name, relative_path)
+
+# Sanitize the input paths
+dir_name = sanitize_path(dir_name)
+relative_path = sanitize_path(relative_path)
+full_path = os.path.abspath(os.path.join(dir_name, relative_path))
+
+# Ensure full_path is within the allowed directory
+allowed_dirs = ['/path/to/allowed/dir1', '/path/to/allowed/dir2']
+if not any(full_path.startswith(allowed_dir) for allowed_dir in allowed_dirs):
+    raise ValueError('Access to this path is not allowed')
