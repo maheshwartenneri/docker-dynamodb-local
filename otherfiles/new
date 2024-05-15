@@ -1,0 +1,15 @@
+
+def validate_path(path):
+    # Ensure that the path is not empty
+    if not path:
+        raise ValueError('Path cannot be empty')
+
+    # Convert the path to by absolute path
+    abs_path = os.path.abspath(path)
+
+    # Validate against a whitelist of allowed directories
+    allowed_dirs = ['/path/to/allowed/dir1', '/path/to/allowed/dir2']
+    if not any(abs_path.startswith(allowed_dir) for allowed_dir in allowed_dirs):
+        raise ValueError('Access to this path is not allowed')
+
+    return abs_path
