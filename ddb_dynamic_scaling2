@@ -1,0 +1,125 @@
+class AWSClient:  # pragma: no cover
+    ...
+    def creation_table_scaling(self, table_name, key_name, key_type, max_read_capacity, max_write_capacity):
+        min_read_capacity = 5
+        min_write_capacity = 5
+        table = self.dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {
+                    'AttributeName': key_name,
+                    'KeyType': 'HASH'
+                },
+            ],
+            AttributeDefinitions=[
+                {
+                    'AttributeName': key_name,
+                    'AttributeType': key_type
+                },
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': min_read_capacity,
+                'WriteCapacityUnits': min_write_capacity
+            }
+        )
+        scalable_dimensions = {
+            'dynamodb:table:ReadCapacityUnits': [min_read_capacity, max_read_capacity],
+            'dynamodb:table:WriteCapacityUnits': [min_write_capacity, max_write_capacity]
+        }
+        for scalable_dimension, capacity in scalable_dimensions.items():
+            self.scaling_dynamodb.register_scalable_target(
+                ServiceNamespace="dynamodb",
+                ResourceId=f"table/{table_name}",
+                ScalableDimension=scalable_dimension,
+                MinCapacity=capacity[0],
+                MaxCapacity=capacity[1]
+            )
+        metrics_and_dimension = {
+            'DynamoDBReadCapacityUtilization': 'dynamodb:table:ReadCapacityUnits',
+            'DynamoDBWriteCapacityUtilization': 'dynamodb:table:WriteCapacityUnits'
+        }
+        percent_of_use_to_aim_for = 50.0
+        scale_out_cooldown_in_seconds = 60
+        scale_in_cooldown_in_seconds = 60
+        for metric, dimension in metrics_and_dimension.items():
+            self.scaling_dynamodb.put_scaling_policy(
+                ServiceNamespace="dynamodb",
+                ResourceId=f"table/{table_name}",
+                PolicyType='TargetTrackingScaling',
+                PolicyName=f"Scale{metric}",
+                ScalableDimension=dimension,
+                TargetTrackingScalingPolicyConfiguration={
+                    'TargetValue': percent_of_use_to_aim_for,
+                    'PredefinedMetricSpecification': {
+                        'PredefinedMetricType': metric
+                    },
+                    'ScaleOutCooldown': scale_out_cooldown_in_seconds,
+                    'ScaleInCooldown': scale_in_cooldown_in_seconds
+                }
+            )
+        table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
+
+
+#######
+
+Explanation
+DynamoDB Scaling Method:
+
+This method is defined in the AWSClient class to create and automatically scale a DynamoDB table.
+It registers scalable targets and policies for read and write capacities.
+Lambda Handler Update:
+
+A call to creation_table_scaling is added within the lambda_handler function.
+It demonstrates scaling a DynamoDB table named example-table when the scaling direction is out.
+Parameters such as table_name, key_name, key_type, max_read_capacity, and max_write_capacity are specified.
+
+######
+
+
+def lambda_handler(event, context):  # pragma: no cover
+    if not event:
+        return {
+            "body": {"status": "Failure"},
+            "statusCode": 400,
+        }
+
+    config = Config(event)
+    environment = os.getenv("ENV", "dev").strip()
+    bucket = os.getenv("BUCKET_NAME", "dynamic-scaling-lambda-dev-us-east-1").strip()
+    path = f'profiles/{environment}/{config.profile}'
+    config.read_from_s3(bucket, path)
+
+    if config.scale == "out":
+        print("Scaling out ASGs...")
+        scale_out_all_asg_count('us-east-1', config=config)
+        scale_out_all_asg_count('us-west-2', config=config)
+        print("ASG scale out complete. \n")
+
+        print("Scaling out services...")
+        scale_out_all_services('us-east-1', config=config)
+        scale_out_all_services('us-west-2', config=config)
+        print("Service scale out complete.")
+        
+        # DynamoDB scaling example call
+        aws_client = AWSClient()
+        aws_client.creation_table_scaling(
+            table_name='example-table',
+            key_name='example-key',
+            key_type='S',
+            max_read_capacity=20,
+            max_write_capacity=20
+        )
+        print("DynamoDB scaling complete.")
+        
+    elif config.scale == "in":
+        print("Scaling in services...")
+        scale_in_all_services('us-east-1', config=config)
+        scale_in_all_services('us-west-2', config=config)
+        print("Service scale in complete. \n")
+        
+        print("Scaling in ASGs...")
+        scale_in_all_asg_count('us-east-1', config=config)
+        scale_in_all_asg_count('us-west-2', config=config)
+        print("ASG scale in complete")
+    else:
+        raise ValueError(f'Invalid parameter, event: {event}')
