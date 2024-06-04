@@ -1,0 +1,203 @@
+import boto3
+import re
+import json
+import time
+import os
+
+# Set environment variables
+os.environ['AWS_PROFILE'] = 'GR_GG_COF_AWS_EPPT_Prometheus_0A_Developer'
+os.environ['BUCKET_NAME'] = 'dynamic-scaling-lambda-dev-us-east-1'
+os.environ['ENV'] = 'dev'
+
+s3 = boto3.resource('s3')
+
+class AWSClient:  # pragma: no cover
+    def __init__(self):
+        self.east_autoscaling = boto3.client('autoscaling', region_name='us-east-1')
+        self.west_autoscaling = boto3.client('autoscaling', region_name='us-west-2')
+        self.east_application_autoscaling = boto3.client('application-autoscaling', region_name='us-east-1')
+        self.west_application_autoscaling = boto3.client('application-autoscaling', region_name='us-west-2')
+        self.east_ecs = boto3.client('ecs', region_name='us-east-1')
+        self.west_ecs = boto3.client('ecs', region_name='us-west-2')
+        self.dynamodb = boto3.resource('dynamodb')
+        self.scaling_dynamodb = boto3.client('application-autoscaling')
+
+    def instances_in_service(self, region_name, autoscaling_group_name):
+        if region_name == 'us-east-1':
+            aws_region_client = self.east_autoscaling
+        elif region_name == 'us-west-2':
+            aws_region_client = self.west_autoscaling
+        else:
+            raise ValueError('Invalid region name provided')
+
+        response = aws_region_client.describe_auto_scaling_groups(AutoScalingGroupNames=[autoscaling_group_name])
+        
+        if len(response['AutoScalingGroups']) != 1:
+            raise ValueError(f'Parameter {autoscaling_group_name} returned {len(response["AutoScalingGroups"])} ASGs.')
+        
+        instances_list = response['AutoScalingGroups'][0]['Instances']
+        return len([instance for instance in instances_list if instance['LifecycleState'] == 'InService'])
+
+    def list_clusters(self, region_name, cluster_name_pattern):
+        if region_name == 'us-east-1':
+            aws_region_client = self.east_ecs
+        elif region_name == 'us-west-2':
+            aws_region_client = self.west_ecs
+        else:
+            raise ValueError('Invalid region name provided')
+        
+        try:
+            response = aws_region_client.list_clusters()
+            results = response['clusterArns']
+            while 'nextToken' in response:
+                response = aws_region_client.list_clusters(nextToken=response['nextToken'])
+                results.extend(response['clusterArns'])
+            
+            compiled_pattern = re.compile(cluster_name_pattern)
+            cluster_list = [cluster_arn for cluster_arn in results if compiled_pattern.match(cluster_arn)]
+            return [cluster_arn.split('/')[-1] for cluster_arn in cluster_list]
+        except aws_region_client.exceptions.ServerException as error:
+            raise RuntimeError(f'Region: {region_name}. Failed to list clusters due to server error: {error}')
+        except aws_region_client.exceptions.ClientException as error:
+            raise RuntimeError(f'Region: {region_name}. Failed to list clusters due to client error: {error}')
+    
+    def scale_asg_count(self, asg_count, region_name, cluster):
+        if region_name == 'us-east-1':
+            aws_region_client = self.east_autoscaling
+        elif region_name == 'us-west-2':
+            aws_region_client = self.west_autoscaling
+        else:
+            raise ValueError('Invalid region name provided')
+        
+        try:
+            print(f'{cluster}-{region_name}-asg')
+            aws_region_client.update_auto_scaling_group(
+                AutoScalingGroupName=f'{cluster}-{region_name}-asg',
+                MinSize=asg_count,
+                MaxSize=asg_count,
+                DesiredCapacity=asg_count
+            )
+        except aws_region_client.exceptions.ScalingActivityInProgressFault as error:
+            raise RuntimeError(f'Failed to scale ASG: {cluster}-{region_name}-asg. Another scaling action is in progress: {error}')
+    
+    def ecs_service_waiter(self, region_name, cluster_name, services_to_poll, poll_interval=10, max_polls=15):
+        if region_name == 'us-east-1':
+            aws_region_client = self.east_ecs
+        elif region_name == 'us-west-2':
+            aws_region_client = self.west_ecs
+        else:
+            raise ValueError('Invalid region name provided')
+        
+        waiter = aws_region_client.get_waiter('services_stable')
+        try:
+            waiter.wait(
+                cluster=cluster_name,
+                services=services_to_poll,
+                WaiterConfig={'Delay': poll_interval, 'MaxAttempts': max_polls}
+            )
+        except aws_region_client.exceptions.WaiterError as error:
+            raise RuntimeError(f'Failed to wait for services in cluster {cluster_name}: {error}')
+
+    def scale_task_count(self, task_count, cluster_name, service_name, region_name):
+        if region_name == 'us-east-1':
+            aws_region_client = self.east_application_autoscaling
+        elif region_name == 'us-west-2':
+            aws_region_client = self.west_application_autoscaling
+        else:
+            raise ValueError('Invalid region name provided')
+
+        try:
+            aws_region_client.register_scalable_target(
+                ServiceNamespace='ecs',
+                ResourceId=f'service/{cluster_name}/{service_name}',
+                ScalableDimension='ecs:service:DesiredCount',
+                MinCapacity=task_count,
+                MaxCapacity=task_count
+            )
+        except aws_region_client.exceptions.ClientError as error:
+            raise RuntimeError(f'Failed to scale task count for service {service_name} in cluster {cluster_name}: {error}')
+    
+    def list_all_ecs_services(self, cluster_name, region_name):
+        if region_name == 'us-east-1':
+            aws_region_client = self.east_ecs
+        elif region_name == 'us-west-2':
+            aws_region_client = self.west_ecs
+        else:
+            raise ValueError('Invalid region name provided')
+
+        try:
+            response = aws_region_client.list_services(cluster=cluster_name)
+            return [service.split('/')[-1] for service in response['serviceArns']]
+        except aws_region_client.exceptions.ClientError as error:
+            raise RuntimeError(f'Failed to list ECS services for cluster {cluster_name} in region {region_name}: {error}')
+
+    def creation_table_scaling(self, table_name, key_name, key_type, max_read_capacity, max_write_capacity):
+        min_read_capacity = 5
+        min_write_capacity = 5
+        table = self.dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {
+                    'AttributeName': key_name,
+                    'KeyType': 'HASH'
+                },
+            ],
+            AttributeDefinitions=[
+                {
+                    'AttributeName': key_name,
+                    'AttributeType': key_type
+                },
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': min_read_capacity,
+                'WriteCapacityUnits': min_write_capacity
+            }
+        )
+        scalable_dimensions = {
+            'dynamodb:table:ReadCapacityUnits': [min_read_capacity, max_read_capacity],
+            'dynamodb:table:WriteCapacityUnits': [min_write_capacity, max_write_capacity]
+        }
+        for scalable_dimension, capacity in scalable_dimensions.items():
+            self.scaling_dynamodb.register_scalable_target(
+                ServiceNamespace="dynamodb",
+                ResourceId=f"table/{table_name}",
+                ScalableDimension=scalable_dimension,
+                MinCapacity=capacity[0],
+                MaxCapacity=capacity[1]
+            )
+        metrics_and_dimension = {
+            'DynamoDBReadCapacityUtilization': 'dynamodb:table:ReadCapacityUnits',
+            'DynamoDBWriteCapacityUtilization': 'dynamodb:table:WriteCapacityUnits'
+        }
+        percent_of_use_to_aim_for = 50.0
+        scale_out_cooldown_in_seconds = 60
+        scale_in_cooldown_in_seconds = 60
+        for metric, dimension in metrics_and_dimension.items():
+            self.scaling_dynamodb.put_scaling_policy(
+                ServiceNamespace="dynamodb",
+                ResourceId=f"table/{table_name}",
+                PolicyType='TargetTrackingScaling',
+                PolicyName=f"Scale{metric}",
+                ScalableDimension=dimension,
+                TargetTrackingScalingPolicyConfiguration={
+                    'TargetValue': percent_of_use_to_aim_for,
+                    'PredefinedMetricSpecification': {
+                        'PredefinedMetricType': metric
+                    },
+                    'ScaleOutCooldown': scale_out_cooldown_in_seconds,
+                    'ScaleInCooldown': scale_in_cooldown_in_seconds
+                }
+            )
+        table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
+
+class Config:  # pragma: no cover
+    def __init__(self, event):
+        if 'Records' in event:
+            self.message = json.loads(event['Records'][0]['Sns']['Message'].replace('\"', ''))
+            self.profile = self.message['profile'].strip().lower()
+            self.scale = self.message['scale'].strip().lower()
+        elif 'profile' in event and 'scale' in event:
+            self.profile = event['profile'].strip().lower()
+            self.scale = event['scale'].strip().lower()
+        else:
+            raise ValueError("
