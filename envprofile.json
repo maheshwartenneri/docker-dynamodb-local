@@ -1,0 +1,22 @@
+{
+  "min_read_capacity": 5,
+  "min_write_capacity": 5,
+  "percent_of_use_to_aim_for": 50.0,
+  "scale_out_cooldown_in_seconds": 60,
+  "scale_in_cooldown_in_seconds": 60,
+  "table_name": "test-table-dynamic-scaling",
+  "key_schema": [
+    {
+      "AttributeName": "key_name",
+      "KeyType": "HASH"
+    }
+  ],
+  "attribute_definitions": [
+    {
+      "AttributeName": "key_name",
+      "AttributeType": "S"
+    }
+  ],
+  "max_read_capacity": 20,
+  "max_write_capacity": 20
+}
