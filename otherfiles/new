@@ -1,42 +1,25 @@
-
-def validate_path(path):
-    # Ensure that the path is not empty
-    if not path:
-        raise ValueError('Path cannot be empty')
-
-    # Convert the path to by absolute path
-    abs_path = os.path.abspath(path)
-
-    # Validate against a whitelist of allowed directories
-    allowed_dirs = ['/path/to/allowed/dir1', '/path/to/allowed/dir2']
-    if not any(abs_path.startswith(allowed_dir) for allowed_dir in allowed_dirs):
-        raise ValueError('Access to this path is not allowed')
-
-    return abs_path
-
-
-
-import os
-import glob
-
-def sanitize_path(path):
-    # Implement sanitization logic here
-    # Example: Remove any '..' or other malicious sequences
-    sanitized_path = path.replace('..', '').replace('//', '/')
-
-    return sanitized_path
-
-# Example usage:
-dir_name = os.path.dirname(__file__)
-relative_path = 'generated'
-full_path = os.path.join(dir_name, relative_path)
-
-# Sanitize the input paths
-dir_name = sanitize_path(dir_name)
-relative_path = sanitize_path(relative_path)
-full_path = os.path.abspath(os.path.join(dir_name, relative_path))
-
-# Ensure full_path is within the allowed directory
-allowed_dirs = ['/path/to/allowed/dir1', '/path/to/allowed/dir2']
-if not any(full_path.startswith(allowed_dir) for allowed_dir in allowed_dirs):
-    raise ValueError('Access to this path is not allowed')
+{
+    "tables": [
+        {
+            "table_name": "dev_ledger_instrument_versions",
+            "read_capacity": 17,
+            "write_capacity": 3,
+            "min_read_capacity": 16,
+            "min_write_capacity": 2,
+            "max_read_capacity": 350,
+            "max_write_capacity": 4,
+            "key_schema": [
+                {
+                    "AttributeName": "instrument_class_id",
+                    "KeyType": "HASH"
+                }
+            ],
+            "attribute_definitions": [
+                {
+                    "AttributeName": "instrument_class_id",
+                    "AttributeType": "S"
+                }
+            ]
+        }
+    ]
+}
