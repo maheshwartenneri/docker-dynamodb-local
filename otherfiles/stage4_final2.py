@@ -199,3 +199,81 @@ def autoscaling_group_waiter(region_name, cluster_name, asg_desired_capacity, po
 def ecs_service_waiter(region_name, cluster_name, services_to_poll, poll_interval=10, max_polls=15):
     if not region_name or not cluster_name:
         return
+        
+        
+import boto3
+import json
+import os
+
+# Main Lambda Handler
+def lambda_handler(event, context):  # pragma: no cover
+    if not event:
+        return {
+            "body": {"status": "Failure"},
+            "statusCode": 400,
+        }
+
+    config = Config(event)
+    environment = os.getenv("ENV", "dev").strip()
+    bucket = os.getenv("BUCKET_NAME", "dynamic-scaling-lambda-dev-us-east-1").strip()
+    path = f'profiles/{environment}/{config.profile}'
+    config.read_from_s3(bucket, path)
+
+    if config.scale == "out":
+        print("Scaling out ASGs...")
+        scale_out_all_asg_count('us-east-1', config=config)
+        scale_out_all_asg_count('us-west-2', config=config)
+        print("ASG scale out complete.\n")
+
+        print("Scaling out services...")
+        scale_out_all_services('us-east-1', config=config)
+        scale_out_all_services('us-west-2', config=config)
+        print("Service scale out complete.")
+
+        # Scale out DynamoDB
+        with open('/Users/ekp945/Documents/GitHub/Boto3_Local_testing/scalein_scaleout.env.json', 'r') as file:
+            dynamo_config = json.load(file)
+        for region_name in ['us-east-1', 'us-west-2']:
+            for table_config in dynamo_config['tables']:
+                scale_out_dynamodb(region_name, table_config)
+
+    elif config.scale == "in":
+        print("Scaling in services...")
+        scale_in_all_services('us-east-1', config=config)
+        scale_in_all_services('us-west-2', config=config)
+        print("Service scale in complete.\n")
+
+        print("Scaling in ASGs...")
+        scale_in_all_asg_count('us-east-1', config=config)
+        scale_in_all_asg_count('us-west-2', config=config)
+        print("ASG scale in complete")
+
+        # Scale in DynamoDB
+        with open('/Users/ekp945/Documents/GitHub/Boto3_Local_testing/scalein_scaleout.env.json', 'r') as file:
+            dynamo_config = json.load(file)
+        for region_name in ['us-east-1', 'us-west-2']:
+            for table_config in dynamo_config['tables']:
+                scale_in_dynamodb(region_name, table_config)
+
+    else:
+        raise ValueError(f'Invalid parameter, event: {event}')
+
+aws_client = AWSClient()
+
+# Scale out DynamoDB
+def scale_out_dynamodb(region_name, table_config):
+    table_name = table_config['table_name']
+    min_read_capacity = table_config['scale_out_min_read_capacity']
+    max_read_capacity = table_config['scale_out_max_read_capacity']
+    min_write_capacity = table_config['scale_out_min_write_capacity']
+    max_write_capacity = table_config['scale_out_max_write_capacity']
+    aws_client.update_scaling_policies(region_name, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
+
+# Scale in DynamoDB
+def scale_in_dynamodb(region_name, table_config):
+    table_name = table_config['table_name']
+    min_read_capacity = table_config['scale_in_min_read_capacity']
+    max_read_capacity = table_config['scale_in_max_read_capacity']
+    min_write_capacity = table_config['scale_in_min_write_capacity']
+    max_write_capacity = table_config['scale_in_max_write_capacity']
+    aws_client.update_scaling_policies(region_name, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
