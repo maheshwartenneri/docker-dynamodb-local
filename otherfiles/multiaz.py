@@ -1,5 +1,10 @@
 import boto3
 import json
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class DynamoDBScaler:
 
@@ -8,8 +13,13 @@ class DynamoDBScaler:
         self.west_application_autoscaling = boto3.client('application-autoscaling', region_name='us-west-2')
 
     def read_from_json(self, file_path):
-        with open(file_path, 'r') as file:
-            self.cluster_scaling_configs = json.load(file)
+        try:
+            with open(file_path, 'r') as file:
+                self.cluster_scaling_configs = json.load(file)
+                logger.info(f"Successfully read configuration from {file_path}")
+        except Exception as e:
+            logger.error(f"Error reading JSON file {file_path}: {e}")
+            raise
 
     def update_scaling_policies(self, aws_region_client, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity):
         try:
@@ -29,14 +39,15 @@ class DynamoDBScaler:
                 MinCapacity=min_write_capacity,
                 MaxCapacity=max_write_capacity
             )
-            print(f"Auto-scaling settings for {table_name} updated successfully in {aws_region_client.meta.region_name}.")
-            print(f"Read Capacity Range: {min_read_capacity} - {max_read_capacity}")
-            print(f"Write Capacity Range: {min_write_capacity} - {max_write_capacity}")
+            logger.info(f"Auto-scaling settings for {table_name} updated successfully in {aws_region_client.meta.region_name}.")
+            logger.info(f"Read Capacity Range: {min_read_capacity} - {max_read_capacity}")
+            logger.info(f"Write Capacity Range: {min_write_capacity} - {max_write_capacity}")
         except Exception as e:
-            print(f"Error updating auto-scaling settings for {table_name} in {aws_region_client.meta.region_name}: {e}")
+            logger.error(f"Error updating auto-scaling settings for {table_name} in {aws_region_client.meta.region_name}: {e}")
+            raise
 
     def scale_out_dynamodb(self):
-        print("Scaling out DynamoDb capacity...")
+        logger.info("Scaling out DynamoDB capacity...")
         for table_config in self.cluster_scaling_configs['tables']:
             table_name = table_config['table_name']
             min_read_capacity = table_config['scale_out_min_read_capacity']
@@ -46,10 +57,10 @@ class DynamoDBScaler:
 
             self.update_scaling_policies(self.east_application_autoscaling, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
             self.update_scaling_policies(self.west_application_autoscaling, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
-        print("DynamoDb capacity scale-out complete")
+        logger.info("DynamoDB capacity scale-out complete")
 
     def scale_in_dynamodb(self):
-        print("Scaling in DynamoDb capacity...")
+        logger.info("Scaling in DynamoDB capacity...")
         for table_config in self.cluster_scaling_configs['tables']:
             table_name = table_config['table_name']
             min_read_capacity = table_config['scale_in_min_read_capacity']
@@ -59,7 +70,7 @@ class DynamoDBScaler:
 
             self.update_scaling_policies(self.east_application_autoscaling, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
             self.update_scaling_policies(self.west_application_autoscaling, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
-        print("DynamoDb capacity scale-in complete")
+        logger.info("DynamoDB capacity scale-in complete")
 
 def main(json_file_path, scale_direction):
     scaler = DynamoDBScaler()
@@ -75,4 +86,7 @@ if __name__ == "__main__":
     json_file_path = 'path/to/your/env.json'
     scale_direction = 'out'  # or 'in'
 
-    main(json_file_path, scale_direction)
+    try:
+        main(json_file_path, scale_direction)
+    except Exception as e:
+        logger.error(f"Script execution failed: {e}")
