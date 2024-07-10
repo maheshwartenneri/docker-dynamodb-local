@@ -6,12 +6,11 @@ class DynamoDBScaler:
     def __init__(self):
         self.east_application_autoscaling = boto3.client('application-autoscaling', region_name='us-east-1')
         self.west_application_autoscaling = boto3.client('application-autoscaling', region_name='us-west-2')
+        self.cluster_scaling_configs = None  # Initialize to None until loaded
 
-    def read_from_s3(self, bucket, path):
-        s3 = boto3.resource('s3')
-        content_object = s3.Object(bucket, path)
-        file_content = content_object.get()['Body'].read().decode('utf-8')
-        self.cluster_scaling_configs = json.loads(file_content)
+    def read_from_json(self, file_path):
+        with open(file_path, 'r') as file:
+            self.cluster_scaling_configs = json.load(file)
 
     def update_scaling_policies(self, aws_region_client, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity):
         try:
@@ -38,6 +37,9 @@ class DynamoDBScaler:
             print(f"Error updating auto-scaling settings for {table_name} in {aws_region_client.meta.region_name}: {e}")
 
     def scale_out_dynamodb(self):
+        if self.cluster_scaling_configs is None:
+            raise ValueError("Cluster scaling configurations not loaded. Call read_from_json first.")
+
         print("Scaling out DynamoDb capacity...")
         for table_config in self.cluster_scaling_configs['tables']:
             table_name = table_config['table_name']
@@ -51,6 +53,9 @@ class DynamoDBScaler:
         print("DynamoDb capacity scale-out complete")
 
     def scale_in_dynamodb(self):
+        if self.cluster_scaling_configs is None:
+            raise ValueError("Cluster scaling configurations not loaded. Call read_from_json first.")
+
         print("Scaling in DynamoDb capacity...")
         for table_config in self.cluster_scaling_configs['tables']:
             table_name = table_config['table_name']
@@ -63,9 +68,9 @@ class DynamoDBScaler:
             self.update_scaling_policies(self.west_application_autoscaling, table_name, min_read_capacity, max_read_capacity, min_write_capacity, max_write_capacity)
         print("DynamoDb capacity scale-in complete")
 
-def main(bucket, path, scale_direction):
+def main(json_file_path, scale_direction):
     scaler = DynamoDBScaler()
-    scaler.read_from_s3(bucket, path)
+    scaler.read_from_json(json_file_path)
 
     if scale_direction == "out":
         scaler.scale_out_dynamodb()
@@ -73,7 +78,8 @@ def main(bucket, path, scale_direction):
         scaler.scale_in_dynamodb()
 
 if __name__ == "__main__":
-    bucket_name = 'your-bucket-name'
-    file_path = 'your-file-path'
+    # Set these variables with your specific values
+    json_file_path = 'path/to/your/env.json'
     scale_direction = 'out'  # or 'in'
-    main(bucket_name, file_path, scale_direction)
+
+    main(json_file_path, scale_direction)
