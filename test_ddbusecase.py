@@ -91,3 +91,7 @@ def test_creation_table_scaling(self):
             'WriteCapacityUnits': 5
         }
     )
+    
+    http://docs.google.com/presentation/d/1-rQ9tR36Je7SF1gbf9U5spxJIVil8GAD7sftMgQ3t8/edit#slide=id.g2ce1027714e_0_17
+    
+    
