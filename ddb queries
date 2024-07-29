@@ -1,0 +1,158 @@
+Let's convert the Scala methods shown in your image to DynamoDB query operations using Python (Boto3). 
+
+### Methods Description:
+1. **getStateItem**
+2. **getStateItems**
+3. **getEvidenceItem**
+4. **getEvidenceItems**
+5. **getEventItem**
+6. **getEventItems**
+
+We'll assume the following structure for DynamoDB tables:
+- `contractId` is the partition key.
+- `compositeSortKey` consists of attributes like `TimesReplayed`, `LedgerSeqNum`, `EventIdType`, etc.
+
+### DynamoDB Python Queries:
+
+#### 1. getStateItem
+```python
+import boto3
+
+def get_state_item(contract_id, times_replayed, ledger_seq_num, event_id_type):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('YourTableName')
+    
+    response = table.get_item(
+        Key={
+            'contractId': contract_id,
+            'compositeSortKey': f"{times_replayed}#{ledger_seq_num}#{event_id_type}"
+        }
+    )
+    
+    return response.get('Item')
+
+# Example usage
+item = get_state_item('contractId123', 1, 100, 'eventTypeA')
+print(item)
+```
+
+#### 2. getStateItems
+```python
+def get_state_items(contract_id, composite_sort_keys):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('YourTableName')
+    
+    items = []
+    for composite_sort_key in composite_sort_keys:
+        times_replayed, ledger_seq_num, event_id_type = composite_sort_key
+        response = table.get_item(
+            Key={
+                'contractId': contract_id,
+                'compositeSortKey': f"{times_replayed}#{ledger_seq_num}#{event_id_type}"
+            }
+        )
+        if 'Item' in response:
+            items.append(response['Item'])
+    
+    return items
+
+# Example usage
+items = get_state_items('contractId123', [(1, 100, 'eventTypeA'), (2, 200, 'eventTypeB')])
+print(items)
+```
+
+#### 3. getEvidenceItem
+```python
+def get_evidence_item(contract_id, times_replayed, ledger_seq_num, event_id_type):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('YourTableName')
+    
+    response = table.get_item(
+        Key={
+            'contractId': contract_id,
+            'compositeSortKey': f"{times_replayed}#{ledger_seq_num}#{event_id_type}"
+        }
+    )
+    
+    return response.get('Item')
+
+# Example usage
+item = get_evidence_item('contractId123', 1, 100, 'eventTypeA')
+print(item)
+```
+
+#### 4. getEvidenceItems
+```python
+def get_evidence_items(contract_id, composite_sort_keys):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('YourTableName')
+    
+    items = []
+    for composite_sort_key in composite_sort_keys:
+        times_replayed, ledger_seq_num, event_id_type = composite_sort_key
+        response = table.get_item(
+            Key={
+                'contractId': contract_id,
+                'compositeSortKey': f"{times_replayed}#{ledger_seq_num}#{event_id_type}"
+            }
+        )
+        if 'Item' in response:
+            items.append(response['Item'])
+    
+    return items
+
+# Example usage
+items = get_evidence_items('contractId123', [(1, 100, 'eventTypeA'), (2, 200, 'eventTypeB')])
+print(items)
+```
+
+#### 5. getEventItem
+```python
+def get_event_item(contract_id, ledger_seq_num):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('YourTableName')
+    
+    response = table.get_item(
+        Key={
+            'contractId': contract_id,
+            'compositeSortKey': ledger_seq_num
+        }
+    )
+    
+    return response.get('Item')
+
+# Example usage
+item = get_event_item('contractId123', 100)
+print(item)
+```
+
+#### 6. getEventItems
+```python
+def get_event_items(contract_id, seq_nums):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('YourTableName')
+    
+    items = []
+    for seq_num in seq_nums:
+        response = table.get_item(
+            Key={
+                'contractId': contract_id,
+                'compositeSortKey': seq_num
+            }
+        )
+        if 'Item' in response:
+            items.append(response['Item'])
+    
+    return items
+
+# Example usage
+items = get_event_items('contractId123', [100, 200, 300])
+print(items)
+```
+
+### Notes:
+1. Replace `'YourTableName'` with the actual name of your DynamoDB table.
+2. The `compositeSortKey` is assumed to be a combination of attributes. Adjust the logic based on your actual schema.
+3. Boto3 is the AWS SDK for Python, which allows you to interact with DynamoDB.
+
+These examples provide a basic structure for querying items in DynamoDB, analogous to the Scala methods you provided.
