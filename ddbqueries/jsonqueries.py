@@ -84,6 +84,203 @@ For each sequence number, perform a query:
 }
 ```
 
+###### Based on the additional images provided, I'll generate DynamoDB queries in JSON format for the next functions in the code. Here are the JSON formatted queries:
+
+### 1. `getLastProcessedEventItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND eventItemByContractIdKey = :eventItemByContractIdKey",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":eventItemByContractIdKey": { "S": "example_event_item_by_contract_id_key" }
+    },
+    "Limit": 1,
+    "ScanIndexForward": false
+}
+```
+
+### 2. `getTransactionIndex`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND transactionIndexKey = :transactionIndexKey",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":transactionIndexKey": { "S": "example_transaction_index_key" }
+    },
+    "IndexName": "StateEventByTransactionIndex"
+}
+```
+
+### 3. `writeStateItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "Item": {
+        "contractId": { "S": "example_contract_id" },
+        "compositeSortKey": { "S": "example_composite_sort_key" },
+        "stateItemCompressed": { "S": "example_state_item_compressed" }
+    },
+    "ConditionExpression": "attribute_not_exists(contractId)"
+}
+```
+
+### 4. `writeEvidenceItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "Item": {
+        "contractId": { "S": "example_contract_id" },
+        "compositeSortKey": { "S": "example_composite_sort_key" },
+        "evidenceItemCompressed": { "S": "example_evidence_item_compressed" }
+    },
+    "ConditionExpression": "attribute_not_exists(contractId)"
+}
+```
+
+### 5. `writeEventItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "Item": {
+        "contractId": { "S": "example_contract_id" },
+        "seqNum": { "S": "example_seq_num" },
+        "eventItemCompressed": { "S": "example_event_item_compressed" }
+    },
+    "ConditionExpression": "attribute_not_exists(contractId)"
+}
+```
+
+### 6. `createPutTransactWriteItems`
+
+```json
+{
+    "TransactItems": [
+        {
+            "Put": {
+                "TableName": "YourTableName",
+                "Item": {
+                    "contractId": { "S": "example_contract_id" },
+                    "ledgerItemSchema": { "S": "example_ledger_item_schema" },
+                    "eventItem": { "S": "example_event_item" }
+                },
+                "ConditionExpression": "attribute_not_exists(contractId)"
+            }
+        },
+        {
+            "Put": {
+                "TableName": "YourTableName",
+                "Item": {
+                    "contractId": { "S": "example_contract_id" },
+                    "evidenceItemSchema": { "S": "example_evidence_item_schema" },
+                    "eventItem": { "S": "example_event_item" }
+                },
+                "ConditionExpression": "attribute_not_exists(contractId)"
+            }
+        },
+        {
+            "Put": {
+                "TableName": "YourTableName",
+                "Item": {
+                    "contractId": { "S": "example_contract_id" },
+                    "stateItemSchema": { "S": "example_state_item_schema" },
+                    "eventItem": { "S": "example_event_item" }
+                },
+                "ConditionExpression": "attribute_not_exists(contractId)"
+            }
+        }
+    ]
+}
+```
+
+### 7. `retrieveStateItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND compositeSortKey = :compositeSortKey",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":compositeSortKey": { "S": "example_composite_sort_key" }
+    }
+}
+```
+
+### 8. `getLedgerItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND compositeSortKey = :compositeSortKey",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":compositeSortKey": { "S": "example_composite_sort_key" }
+    }
+}
+```
+
+### 9. `readLedgerItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND seqNum = :seqNum",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":seqNum": { "S": "example_seq_num" }
+    }
+}
+```
+
+### 10. `getItemResponse`
+
+```json
+{
+    "TableName": "YourTableName",
+    "Key": {
+        "contractId": { "S": "example_contract_id" },
+        "compositeSortKey": { "S": "example_composite_sort_key" }
+    }
+}
+```
+
+### 11. `getQueryResponse`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND compositeSortKey = :compositeSortKey",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":compositeSortKey": { "S": "example_composite_sort_key" }
+    }
+}
+```
+
+### 12. `putItemResponse`
+
+```json
+{
+    "TableName": "YourTableName",
+    "Item": {
+        "contractId": { "S": "example_contract_id" },
+        "compositeSortKey": { "S": "example_composite_sort_key" },
+        "attributeMap": { "S": "example_attribute_map" }
+    },
+    "ConditionExpression": "attribute_not_exists(contractId)"
+}
+```
+
+These JSON formatted queries should align with the corresponding functions from the provided Scala code and can be used with DynamoDB API calls. Adjust the `TableName` and attribute values according to your actual schema and requirements.
+
+
+
 ### Notes:
 
 - Replace `YourTableName` with the actual name of your DynamoDB table.
