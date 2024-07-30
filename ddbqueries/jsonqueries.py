@@ -275,6 +275,88 @@ For each sequence number, perform a query:
     },
     "ConditionExpression": "attribute_not_exists(contractId)"
 }
+
+Continuing from the provided images, here are the corresponding JSON formatted DynamoDB queries for the remaining functions:
+
+### 1. `putItemResponse`
+
+```json
+{
+    "TableName": "YourTableName",
+    "Item": {
+        "contractId": { "S": "example_contract_id" },
+        "compositeSortKey": { "S": "example_composite_sort_key" },
+        "attributeMap": { "S": "example_attribute_map" }
+    },
+    "ConditionExpression": "attribute_not_exists(contractId)"
+}
+```
+
+### 2. `transactWriteItemsResponse`
+
+For a transaction write items request:
+
+```json
+{
+    "TransactItems": [
+        {
+            "Put": {
+                "TableName": "YourTableName",
+                "Item": {
+                    "contractId": { "S": "example_contract_id" },
+                    "compositeSortKey": { "S": "example_composite_sort_key" },
+                    "attributeMap": { "S": "example_attribute_map" }
+                },
+                "ConditionExpression": "attribute_not_exists(contractId)"
+            }
+        },
+        {
+            "Put": {
+                "TableName": "YourTableName",
+                "Item": {
+                    "contractId": { "S": "example_contract_id" },
+                    "compositeSortKey": { "S": "example_composite_sort_key" },
+                    "attributeMap": { "S": "example_attribute_map" }
+                },
+                "ConditionExpression": "attribute_not_exists(contractId)"
+            }
+        }
+    ]
+}
+```
+
+### 3. `retrieveEvidenceItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND compositeSortKey = :compositeSortKey",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":compositeSortKey": { "S": "example_times_replayed#example_ledger_seq_num#example_event_id_type" }
+    }
+}
+```
+
+### 4. `retrieveEventItem`
+
+```json
+{
+    "TableName": "YourTableName",
+    "KeyConditionExpression": "contractId = :contractId AND seqNum = :seqNum",
+    "ExpressionAttributeValues": {
+        ":contractId": { "S": "example_contract_id" },
+        ":seqNum": { "S": "example_seq_num" }
+    }
+}
+```
+
+### Notes:
+- Ensure you replace `YourTableName` with the actual table name.
+- Adjust the attribute names and values (`example_contract_id`, `example_composite_sort_key`, `example_attribute_map`, etc.) according to your actual data model and requirements.
+
+These JSON formatted queries can be used with DynamoDB API calls to perform the respective operations defined in the provided Scala code. If you need any further adjustments or additional details, feel free to ask!
+
 ```
 
 These JSON formatted queries should align with the corresponding functions from the provided Scala code and can be used with DynamoDB API calls. Adjust the `TableName` and attribute values according to your actual schema and requirements.
