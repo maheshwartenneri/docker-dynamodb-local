@@ -70,4 +70,38 @@ get_item()
 - **Table Name**: Replace `"dev_ledger_instrument_versions"` with the actual name of your DynamoDB table if different.
 - **Key Values**: Replace the values for `instrument_class_id` and `instrument_class_version_id` with the actual key values you want to query.
 
-This script should help you perform the `GetItem` operation in DynamoDB using Boto3 and retrieve the specified attributes for the item. If you need further assistance or adjustments, feel free to ask!
+This script should help you perform the `GetItem` operation in DynamoDB using Boto3 and retrieve the specified attributes for the item. If you need further assistance or adjustments, feel free to ask
+
+
+import boto3
+from botocore.exceptions import ClientError
+
+# Initialize a session using Amazon DynamoDB
+dynamodb = boto3.resource('dynamodb')
+
+# Function to get item from DynamoDB
+def get_item():
+    table_name = "dev_ledger_instrument_versions"
+    key = {
+        "instrument_class_id": "c45a2e649a034bdba0eb7dc5b4edf8d7",
+        "instrument_class_version_id": "2"
+    }
+    projection_expression = "instrument_id, instrument_effective_date, instrument_trigger_date"
+    
+    try:
+        table = dynamodb.Table(table_name)
+        response = table.get_item(
+            Key=key,
+            ProjectionExpression=projection_expression
+        )
+        
+        if 'Item' in response:
+            print("GetItem succeeded:", response['Item'])
+        else:
+            print("No item found with the provided key.")
+
+    except ClientError as e:
+        print("Error:", e.response['Error']['Message'])
+
+# Call the function to perform the GetItem operation
+get_item()
