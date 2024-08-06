@@ -142,3 +142,40 @@ def get_item():
 
 # Call the function to perform the GetItem operation
 get_item()
+
+
+#5 
+import boto3
+from botocore.exceptions import ClientError
+
+# Initialize a DynamoDB client using boto3
+client = boto3.client('dynamodb')
+
+# Function to query the last processed item from DynamoDB
+def query_last_processed_item():
+    table_name = "dev_ledger_instrument_versions"
+    partition_key_value = "c45a2e649a034bdba0eb7dc5b4edf8d7"
+    
+    try:
+        response = client.query(
+            TableName=table_name,
+            KeyConditionExpression="instrument_class_id = :instrument_class_id AND instrument_class_version_id = :instrument_class_version_id",
+            ExpressionAttributeValues={
+                ":instrument_class_id": {"S": partition_key_value},
+                ":instrument_class_version_id": {"S": "2"}
+            },
+            ProjectionExpression="instrument_id, instrument_effective_date, instrument_trigger_date",
+            ScanIndexForward=False,  # To get the last processed item first
+            Limit=1
+        )
+        
+        if 'Items' in response and response['Items']:
+            print("Query succeeded:", response['Items'][0])
+        else:
+            print("No item found with the provided key.")
+
+    except ClientError as e:
+        print("Error:", e.response['Error']['Message'])
+
+# Call the function to perform the Query operation
+query_last_processed_item()
