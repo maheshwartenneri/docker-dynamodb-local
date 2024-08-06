@@ -105,3 +105,40 @@ def get_item():
 
 # Call the function to perform the GetItem operation
 get_item()
+
+
+
+#3rd script 
+
+import boto3
+from botocore.exceptions import ClientError
+
+# Initialize a DynamoDB client using boto3
+client = boto3.client('dynamodb')
+
+# Function to get item from DynamoDB
+def get_item():
+    table_name = "dev_ledger_instrument_versions"
+    key = {
+        "instrument_class_id": {"S": "c45a2e649a034bdba0eb7dc5b4edf8d7"},
+        "instrument_class_version_id": {"S": "2"}
+    }
+    projection_expression = "instrument_id, instrument_effective_date, instrument_trigger_date"
+    
+    try:
+        response = client.get_item(
+            TableName=table_name,
+            Key=key,
+            ProjectionExpression=projection_expression
+        )
+        
+        if 'Item' in response:
+            print("GetItem succeeded:", response['Item'])
+        else:
+            print("No item found with the provided key.")
+
+    except ClientError as e:
+        print("Error:", e.response['Error']['Message'])
+
+# Call the function to perform the GetItem operation
+get_item()
