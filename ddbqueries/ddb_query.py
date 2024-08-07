@@ -179,3 +179,47 @@ def query_last_processed_item():
 
 # Call the function to perform the Query operation
 query_last_processed_item()
+
+
+#6
+import boto3
+from botocore.exceptions import ClientError
+
+# Initialize a DynamoDB client using boto3
+client = boto3.client('dynamodb', region_name='us-east-1')
+
+# Function to query the transaction index
+def query_transaction_index(contract_id_value, transaction_id_value):
+    table_name = "dev_ledger_state_event_evidence"
+    index_name = "event_by_transaction_id"
+    
+    try:
+        response = client.query(
+            TableName=table_name,
+            IndexName=index_name,
+            KeyConditionExpression="contract_id = :contract_id AND transaction_id = :transaction_id",
+            ExpressionAttributeValues={
+                ":contract_id": {"S": contract_id_value},
+                ":transaction_id": {"S": transaction_id_value}
+            },
+            ProjectionExpression="contract_id, transaction_id, SK, primary_event_hash",
+            Limit=1
+        )
+        
+        if 'Items' in response and response['Items']:
+            print("Query succeeded:")
+            for item in response['Items']:
+                print(item)
+        else:
+            print("No item found with the provided key.")
+
+    except ClientError as e:
+        print("Error:", e.response['Error']['Message'])
+
+# Example usage
+contract_id_value = "example_contract_id"
+transaction_id_value = "example_transaction_id"
+
+query_transaction_index(contract_id_value, transaction_id_value)
+
+
