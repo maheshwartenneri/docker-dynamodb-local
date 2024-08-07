@@ -1,4 +1,4 @@
-import json
+limport json
 import re
 
 # Define the path to the text file
@@ -7,22 +7,21 @@ file_path = 'output_dynamodb_ledger.txt'
 # Function to extract DynamoDB queries from a text file
 def extract_dynamodb_queries(file_path):
     queries = []
-
-    # Define a regex pattern to identify JSON objects
-    json_pattern = re.compile(r'{.*?}')
+    json_pattern = re.compile(r'{.*?}')  # Regex pattern to identify JSON objects
 
     with open(file_path, 'r') as file:
-        for line in file:
-            # Search for JSON objects in each line
-            match = json_pattern.search(line)
-            if match:
-                json_string = match.group(0)
-                try:
-                    # Parse the JSON string
-                    dynamodb_query = json.loads(json_string)
-                    queries.append(dynamodb_query)
-                except json.JSONDecodeError as e:
-                    print(f"Error decoding JSON in line: {line}\nError: {e}")
+        content = file.read()
+
+    # Find all JSON-like strings in the content
+    matches = json_pattern.findall(content)
+
+    for match in matches:
+        try:
+            # Parse the JSON string
+            dynamodb_query = json.loads(match)
+            queries.append(dynamodb_query)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {match}\nError: {e}")
 
     return queries
 
