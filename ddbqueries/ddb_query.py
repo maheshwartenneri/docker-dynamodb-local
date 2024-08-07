@@ -222,4 +222,38 @@ transaction_id_value = "example_transaction_id"
 
 query_transaction_index(contract_id_value, transaction_id_value)
 
+#7
+import boto3
+from botocore.exceptions import ClientError
+
+# Initialize a DynamoDB client using boto3
+client = boto3.client('dynamodb', region_name='us-east-1')
+
+# Function to insert data into the table
+def insert_data_into_dynamodb():
+    table_name = "dev_ledger_instrument_versions"
+    
+    item = {
+        'instrument_trigger_date': {'S': '1970-01-01'},
+        'instrument_comment': {'NULL': True},
+        'instrument_class_version_id': {'N': '1'},
+        'instrument_created_date': {'S': '2023-10-19T21:41:25.726+0000'},
+        'instrument_id': {'S': '865d1622e23526d3e65e4e6e3598463a49c2675796d6ea6b5ec5c2744574ed34'},
+        'instrument_class_id': {'S': 'mainstreet-card-integration'},
+        'instrument_effective_date': {'S': '1970-01-01'},
+        'instrument_action': {'S': 'genesis'}
+    }
+    
+    try:
+        response = client.put_item(
+            TableName=table_name,
+            Item=item
+        )
+        print("Insert succeeded:", response)
+    
+    except ClientError as e:
+        print("Error:", e.response['Error']['Message'])
+
+# Call the function to insert data
+insert_data_into_dynamodb()
 
