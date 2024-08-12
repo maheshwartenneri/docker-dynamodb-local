@@ -1,36 +1,14 @@
-limport json
-import re
+# Function to extract characters between column 103 and 119
+def extract_columns_from_file(input_file, output_file):
+    with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
+        for line in infile:
+            # Extract the substring from column 103 to 119 (indexes 102 to 118 in 0-based index)
+            extracted_text = line[102:119]
+            # Write the extracted text to the output file
+            outfile.write(extracted_text + '\n')
 
-# Define the path to the text file
-file_path = 'output_dynamodb_ledger.txt'
+# Example usage
+input_file = 'input.txt'  # Replace with your input file path
+output_file = 'output.txt'  # Replace with your desired output file path
 
-# Function to extract DynamoDB queries from a text file
-def extract_dynamodb_queries(file_path):
-    queries = []
-    json_pattern = re.compile(r'{.*?}')  # Regex pattern to identify JSON objects
-
-    with open(file_path, 'r') as file:
-        content = file.read()
-
-    # Find all JSON-like strings in the content
-    matches = json_pattern.findall(content)
-
-    for match in matches:
-        try:
-            # Parse the JSON string
-            dynamodb_query = json.loads(match)
-            queries.append(dynamodb_query)
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {match}\nError: {e}")
-
-    return queries
-
-# Call the function to extract the queries
-dynamodb_queries = extract_dynamodb_queries(file_path)
-
-if dynamodb_queries:
-    print("Extracted DynamoDB Queries:")
-    for query in dynamodb_queries:
-        print(json.dumps(query, indent=4))
-else:
-    print("No DynamoDB queries found.")
+extract_columns_from_file(input_file, output_file)
