@@ -1,109 +1,36 @@
-Due to the time constraints in processing the images, I will extract the relevant JSON data directly from the images provided. Here is the extracted JSON data from each image based on the visible content.
+Here’s a description of the DynamoDB queries shown in the image:
 
-### Extracted JSON Data:
+### Query 1: `getLastProcessedEventItem`
 
-1. **From Image 1**:
-   ```json
-   {
-       "TableName": "local_ledger_state_event_evidence",
-       "Limit": 1,
-       "ConsistentRead": true,
-       "ScanIndexForward": false,
-       "ReturnConsumedCapacity": "TOTAL",
-       "KeyConditionExpression": "contract_id = :contract_id",
-       "ExpressionAttributeValues": {
-           ":contract_id": {
-               "S": "event-account-id-6409782123~~sorId=324"
-           }
-       }
-   }
-   ```
+**Purpose:**
+This query is designed to retrieve the last processed event item for a specific contract in the `dev_ledger_state_event_evidence` table. The query looks for the most recent item based on the combination of `contractId` and `SK` (sort key), with a specific `SK` value of `"0000000000"`.
 
-2. **From Image 2**:
-   ```json
-   {
-       "TableName": "local_ledger_state_event_evidence",
-       "Limit": 1,
-       "ConsistentRead": true,
-       "ScanIndexForward": false,
-       "ReturnConsumedCapacity": "TOTAL",
-       "KeyConditionExpression": "contract_id = :contract_id",
-       "ExpressionAttributeValues": {
-           ":contract_id": {
-               "S": "event-account-id-3979677028~~sorId=324"
-           }
-       }
-   }
-   ```
+**Key Elements:**
+- **TableName:** `"dev_ledger_state_event_evidence"` - The DynamoDB table being queried.
+- **KeyConditionExpression:** This expression specifies that the query should filter items where `contractId` equals a specific value and `SK` equals `"0000000000"`.
+- **ExpressionAttributeValues:**
+  - `:contractId` corresponds to `"event-accountId=2c9fale7a7744121b1e6ee82632e8892~~sorId=324"`.
+  - `:SK` corresponds to `"0000000000"`.
+- **Limit:** `1` - The query is limited to return only the most recent (or first) matching item.
+- **ScanIndexForward:** `false` - This option ensures that the query results are sorted in descending order by the sort key (`SK`), so the most recent item is returned.
 
-3. **From Image 3**:
-   ```json
-   {
-       "TableName": "local_ledger_state_event_evidence",
-       "Limit": 1,
-       "ConsistentRead": true,
-       "ScanIndexForward": false,
-       "ReturnConsumedCapacity": "TOTAL",
-       "KeyConditionExpression": "contract_id = :contract_id",
-       "ExpressionAttributeValues": {
-           ":contract_id": {
-               "S": "event-account-id-3979677028~~sorId=324"
-           }
-       }
-   }
-   ```
+### Query 2: `getTransactionIndex`
 
-4. **From Image 4**:
-   ```json
-   {
-       "Item": {
-           "transaction_id": {
-               "S": "fb2095bb-c1b7-4f1a2-b48a-bf12c165efa3"
-           },
-           "dst_version": {
-               "S": "1"
-           },
-           "event_schema_version": {
-               "S": "1"
-           },
-           "state_schema_version": {
-               "S": "1"
-           },
-           "corrected_ordering": {
-               "L": [
-                   {
-                       "S": "0,2,0"
-                   }
-               ]
-           },
-           "primary_event_hash": {
-               "B": "eNrrEFGIO2HRyWbvW1km/eeLVLT36EH/YwWbj7UcmcH87uVraQ0BEAM=="
-           },
-           "contract_id": {
-               "S": "event-accountId-1439195358~~sorId=324"
-           },
-           "lamport_timestamp": {
-               "S": "2024-08-05T09:00:00.000Z"
-           },
-           "maintenance_lifecycle_account_int_state": {
-               "S": "purge_pending"
-           },
-           "historic_evidence_ordering": {
-               "L": []
-           },
-           "crypto_digest": {
-               "B": "eNoBQAC/972BLNUJMczIqgqUe736MY68B3d8BM6vW8+Lc634fmTx140jvtW8y2DHEYvZlw0iv/q3BhLhj0lpIOBT6y5/EUGpE5CE+"
-           },
-           "start_instruction_id": {
-               "S": "a"
-           }
-       }
-   }
-   ```
-{
-    "start_instruction_id": {"S": "a5fce4fed40c6872eea6d3a1c603c49c5da0d68813d1ec00e8718f138f74656"},
-    "SK": {"S": "00000000002"},
-    "instrument_class_id": {"S": "testInstrumentClass"},
-    "state": {"B": "T2JqAQOLYWXZby5Z2hlbWGbHsidHWZS6ImFhCCI"},
-    "processed_primary_event": {"B": "eNqdkeFQwzAMht/F5xoSJ9nawg7d2sNQZYx8WB7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroYwBE7oSSxH0ejNroY |oai:code-citation|
-These are the extracted JSON data from the visible parts of the images provided. If you need further assistance with processing these images or if you have additional images to process, please let me know!
+**Purpose:**
+This query is intended to retrieve a specific transaction's event evidence from the `dev_ledger_state_event_evidence` table, using a secondary index called `event_by_transaction_id`. It filters based on a combination of `contract_id` and `transaction_id`.
+
+**Key Elements:**
+- **TableName:** `"dev_ledger_state_event_evidence"` - The DynamoDB table being queried.
+- **IndexName:** `"event_by_transaction_id"` - The name of the secondary index that is being queried.
+- **KeyConditionExpression:** The query filters items where `contract_id` equals a specific value and `transaction_id` equals another specific value.
+- **ExpressionAttributeValues:**
+  - `:contract_id` corresponds to `"event-accountId=2c9fale7a7744121b1e6ee82632e8892~~sorId=324"`.
+  - `:transaction_id` corresponds to `"CANARY_SHAW_EXIT_ACCT_PROVISION_c6a258fa-6b48-40e5-873e-c43a4dab4a4c"`.
+- **ProjectionExpression:** Specifies that only the `contract_id`, `transaction_id`, `SK`, and `primary_event_hash` attributes should be returned in the query result.
+- **Limit:** `1` - The query is limited to return only the first matching item.
+
+**Overall:**
+- The first query (`getLastProcessedEventItem`) retrieves the last event processed for a specific contract, focusing on the most recent sort key.
+- The second query (`getTransactionIndex`) fetches an event record related to a specific transaction within a contract, using a secondary index to identify the relevant data.
+
+These queries are designed for efficiently retrieving specific items from a large dataset within DynamoDB by utilizing key conditions and index lookups.
