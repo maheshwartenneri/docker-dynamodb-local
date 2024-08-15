@@ -1,50 +1,8 @@
-import boto3
+When comparing the Netty NIO Async HTTP Client and the AWS CRT Async Client, there are a few key differences to consider:
 
-class DynamoDBScaler:
-    def __init__(self):
-        self.scaling_dynamodb = boto3.client('application-autoscaling')
+	1.	Performance: The AWS CRT Async Client generally offers better performance in terms of startup time and request latency. For instance, in Lambda environments, the CRT client can reduce cold start times by up to 76% and lower memory usage by around 14%, compared to the Netty NIO Async Client. This performance boost is due to the AWS CRT being built in C, allowing for more optimized execution  .
+	2.	Connection Management: The AWS CRT client provides enhanced connection management features, including asynchronous DNS resolution, improved DNS load balancing, and connection health monitoring. These features help in automatically handling slow or unreliable connections more effectively than Netty  .
+	3.	Memory Footprint: The AWS CRT client has a smaller memory footprint, making it more suitable for environments where memory usage is a concern, such as AWS Lambda. This is particularly important in high-concurrency scenarios or when running serverless workloads  .
+	4.	Usability and Integration: Netty is more mature and widely adopted across various use cases, providing extensive documentation and community support. However, the AWS CRT client is specifically optimized for AWS SDKs and might offer more out-of-the-box benefits if your primary use case is AWS-related  .
 
-    def list_existing_policies(self, table_name):
-        response = self.scaling_dynamodb.describe_scaling_policies(
-            ServiceNamespace='dynamodb',
-            ResourceId=f'table/{table_name}'
-        )
-        return response.get('ScalingPolicies', [])
-
-    def list_scalable_targets(self, table_name):
-        response = self.scaling_dynamodb.describe_scalable_targets(
-            ServiceNamespace='dynamodb',
-            ResourceIds=[f'table/{table_name}']
-        )
-        return response.get('ScalableTargets', [])
-
-if __name__ == '__main__':
-    table_name = 'dev-lgr-inst'
-    scaler = DynamoDBScaler()
-
-    # List existing scaling policies
-    policies = scaler.list_existing_policies(table_name)
-    if policies:
-        print(f"Existing scaling policies for table '{table_name}':")
-        for policy in policies:
-            print(f"Policy Name: {policy['PolicyName']}")
-            print(f"Scalable Dimension: {policy['ScalableDimension']}")
-            print(f"Policy Type: {policy['PolicyType']}")
-            print(f"Target Value: {policy['TargetTrackingScalingPolicyConfiguration']['TargetValue']}")
-            print(f"Scale Out Cooldown: {policy['TargetTrackingScalingPolicyConfiguration']['ScaleOutCooldown']}")
-            print(f"Scale In Cooldown: {policy['TargetTrackingScalingPolicyConfiguration']['ScaleInCooldown']}")
-            print("-" * 50)
-    else:
-        print(f"No scaling policies found for table '{table_name}'.")
-
-    # List scalable targets to get min and max capacities
-    scalable_targets = scaler.list_scalable_targets(table_name)
-    if scalable_targets:
-        print(f"Scalable targets for table '{table_name}':")
-        for target in scalable_targets:
-            print(f"Scalable Dimension: {target['ScalableDimension']}")
-            print(f"Min Capacity: {target['MinCapacity']}")
-            print(f"Max Capacity: {target['MaxCapacity']}")
-            print("-" * 50)
-    else:
-        print(f"No scalable targets found for table '{table_name}'.")
+In summary, while Netty is a robust and flexible choice, the AWS CRT client offers superior performance and optimized features for AWS services, especially in resource-constrained environments like AWS Lambda. The choice between the two should be guided by your specific use case and performance requirements.
