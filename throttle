@@ -1,6 +1,6 @@
 import boto3
 
-def get_ecs_tasks_from_instance(instance_id):
+def get_ecs_tasks_from_instances(instance_ids):
     ecs_client = boto3.client('ecs')
     ec2_client = boto3.client('ec2')
     
@@ -8,36 +8,45 @@ def get_ecs_tasks_from_instance(instance_id):
     clusters_response = ecs_client.list_clusters()
     clusters = clusters_response['clusterArns']
 
-    # Iterate over each ECS cluster
-    for cluster in clusters:
-        # List container instances in the cluster
-        container_instances_response = ecs_client.list_container_instances(cluster=cluster)
-        container_instances = container_instances_response['containerInstanceArns']
-        
-        if not container_instances:
-            continue
-        
-        # Describe the container instances to find the one matching the EC2 instance ID
-        describe_response = ecs_client.describe_container_instances(cluster=cluster, containerInstances=container_instances)
-        
-        for container_instance in describe_response['containerInstances']:
-            if container_instance['ec2InstanceId'] == instance_id:
-                # List tasks running on the container instance
-                task_response = ecs_client.list_tasks(cluster=cluster, containerInstance=container_instance['containerInstanceArn'])
-                task_arns = task_response['taskArns']
-                
-                if task_arns:
-                    # Describe the tasks to get details
-                    tasks = ecs_client.describe_tasks(cluster=cluster, tasks=task_arns)
-                    for task in tasks['tasks']:
-                        print(f"Task ARN: {task['taskArn']}, Task Definition: {task['taskDefinitionArn']}")
-                else:
-                    print(f"No tasks found running on instance {instance_id}.")
-                
-                return
+    if not clusters:
+        print("No ECS clusters found in your account.")
+        return
     
-    print(f"No ECS cluster found for instance {instance_id}.")
+    # Iterate over each instance ID provided
+    for instance_id in instance_ids:
+        instance_found = False
+        print(f"\nChecking instance ID: {instance_id}")
+        
+        # Iterate over each ECS cluster
+        for cluster in clusters:
+            # List container instances in the cluster
+            container_instances_response = ecs_client.list_container_instances(cluster=cluster)
+            container_instances = container_instances_response['containerInstanceArns']
+            
+            if not container_instances:
+                continue
+            
+            # Describe the container instances to find the one matching the EC2 instance ID
+            describe_response = ecs_client.describe_container_instances(cluster=cluster, containerInstances=container_instances)
+            
+            for container_instance in describe_response['containerInstances']:
+                if container_instance['ec2InstanceId'] == instance_id:
+                    instance_found = True
+                    # List tasks running on the container instance
+                    task_response = ecs_client.list_tasks(cluster=cluster, containerInstance=container_instance['containerInstanceArn'])
+                    task_arns = task_response['taskArns']
+                    
+                    if task_arns:
+                        # Describe the tasks to get details
+                        tasks = ecs_client.describe_tasks(cluster=cluster, tasks=task_arns)
+                        for task in tasks['tasks']:
+                            print(f"  Task ARN: {task['taskArn']}, Task Definition: {task['taskDefinitionArn']}")
+                    else:
+                        print(f"  No tasks found running on instance {instance_id}.")
+        
+        if not instance_found:
+            print(f"  No ECS cluster found for instance {instance_id}.")
 
-# Replace with your instance ID
-instance_id = "i-xxxxxxxxxxxxxxxxx"
-get_ecs_tasks_from_instance(instance_id)
+# Example usage
+instance_ids = ["i-xxxxxxxxxxxxxxxxx", "i-yyyyyyyyyyyyyyyyy", "i-zzzzzzzzzzzzzzzz", "i-aaaaaaaaaaaaaaaa"]
+get_ecs_tasks_from_instances(instance_ids)
