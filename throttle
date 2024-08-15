@@ -1,99 +1,43 @@
-To track running services on an EC2 instance using its instance ID with `boto3`, you can use the following script. This script will focus on two primary methods:
-
-1. **Identifying if the EC2 instance is part of an ECS cluster.**
-2. **Using Systems Manager (SSM) to run a command on the EC2 instance to list running services.**
-
-### 1. **Check if the Instance is Part of an ECS Cluster:**
-
-```python
 import boto3
 
-def get_ecs_services_from_instance(instance_id):
+def get_ecs_tasks_from_instance(instance_id):
     ecs_client = boto3.client('ecs')
     ec2_client = boto3.client('ec2')
-
-    # Get the ECS cluster and container instance associated with the EC2 instance
-    response = ec2_client.describe_instances(InstanceIds=[instance_id])
-    tags = response['Reservations'][0]['Instances'][0].get('Tags', [])
     
-    cluster_name = None
-    for tag in tags:
-        if tag['Key'] == 'aws:ecs:clusterName':
-            cluster_name = tag['Value']
-            break
+    # List all ECS clusters
+    clusters_response = ecs_client.list_clusters()
+    clusters = clusters_response['clusterArns']
 
-    if not cluster_name:
-        print(f"No ECS cluster found for instance {instance_id}")
-        return
-
-    # Get the container instance ID associated with the EC2 instance
-    container_instance_arn = None
-    response = ecs_client.list_container_instances(cluster=cluster_name)
-    for container_instance in response['containerInstanceArns']:
-        details = ecs_client.describe_container_instances(
-            cluster=cluster_name,
-            containerInstances=[container_instance]
-        )
-        if details['containerInstances'][0]['ec2InstanceId'] == instance_id:
-            container_instance_arn = container_instance
-            break
-
-    if container_instance_arn:
-        # List the running tasks on the container instance
-        tasks = ecs_client.list_tasks(cluster=cluster_name, containerInstance=container_instance_arn)
-        if tasks['taskArns']:
-            response = ecs_client.describe_tasks(cluster=cluster_name, tasks=tasks['taskArns'])
-            for task in response['tasks']:
-                print(f"Running service: {task['taskDefinitionArn']}")
-        else:
-            print(f"No tasks running on the instance {instance_id} in ECS cluster {cluster_name}.")
-    else:
-        print(f"No container instance found for EC2 instance {instance_id} in ECS cluster {cluster_name}.")
+    # Iterate over each ECS cluster
+    for cluster in clusters:
+        # List container instances in the cluster
+        container_instances_response = ecs_client.list_container_instances(cluster=cluster)
+        container_instances = container_instances_response['containerInstanceArns']
+        
+        if not container_instances:
+            continue
+        
+        # Describe the container instances to find the one matching the EC2 instance ID
+        describe_response = ecs_client.describe_container_instances(cluster=cluster, containerInstances=container_instances)
+        
+        for container_instance in describe_response['containerInstances']:
+            if container_instance['ec2InstanceId'] == instance_id:
+                # List tasks running on the container instance
+                task_response = ecs_client.list_tasks(cluster=cluster, containerInstance=container_instance['containerInstanceArn'])
+                task_arns = task_response['taskArns']
+                
+                if task_arns:
+                    # Describe the tasks to get details
+                    tasks = ecs_client.describe_tasks(cluster=cluster, tasks=task_arns)
+                    for task in tasks['tasks']:
+                        print(f"Task ARN: {task['taskArn']}, Task Definition: {task['taskDefinitionArn']}")
+                else:
+                    print(f"No tasks found running on instance {instance_id}.")
+                
+                return
+    
+    print(f"No ECS cluster found for instance {instance_id}.")
 
 # Replace with your instance ID
 instance_id = "i-xxxxxxxxxxxxxxxxx"
-get_ecs_services_from_instance(instance_id)
-```
-
-### 2. **Use Systems Manager to List Running Services:**
-
-```python
-import boto3
-
-def list_running_services_via_ssm(instance_id):
-    ssm_client = boto3.client('ssm')
-    
-    try:
-        # Send a command to list running services on the instance
-        response = ssm_client.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            Parameters={'commands': ['systemctl list-units --type=service --state=running']}
-        )
-
-        command_id = response['Command']['CommandId']
-
-        # Get the command output
-        output = ssm_client.get_command_invocation(
-            CommandId=command_id,
-            InstanceId=instance_id
-        )
-
-        print("Running services on instance:")
-        print(output['StandardOutputContent'])
-
-    except ssm_client.exceptions.InvalidInstanceId:
-        print(f"The instance {instance_id} is not managed by Systems Manager.")
-    except ssm_client.exceptions.InvocationDoesNotExist:
-        print(f"No command found for the instance {instance_id}.")
-
-# Replace with your instance ID
-instance_id = "i-xxxxxxxxxxxxxxxxx"
-list_running_services_via_ssm(instance_id)
-```
-
-### Summary:
-1. **`get_ecs_services_from_instance`:** This script checks if an EC2 instance is part of an ECS cluster and retrieves running ECS tasks on that instance.
-2. **`list_running_services_via_ssm`:** This script uses AWS Systems Manager (SSM) to remotely execute a command on the EC2 instance to list all running services using `systemctl`.
-
-**Note:** For the SSM script to work, the instance must have the SSM agent installed and be configured for Systems Manager. Ensure that the EC2 instance has the appropriate IAM role attached with `AmazonEC2RoleforSSM` permissions.
+get_ecs_tasks_from_instance(instance_id)
