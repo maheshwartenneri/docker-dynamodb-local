@@ -1,38 +1,99 @@
+To track running services on an EC2 instance using its instance ID with `boto3`, you can use the following script. This script will focus on two primary methods:
+
+1. **Identifying if the EC2 instance is part of an ECS cluster.**
+2. **Using Systems Manager (SSM) to run a command on the EC2 instance to list running services.**
+
+### 1. **Check if the Instance is Part of an ECS Cluster:**
+
+```python
 import boto3
-import time
-import logging
-from botocore.exceptions import ClientError
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def get_ecs_services_from_instance(instance_id):
+    ecs_client = boto3.client('ecs')
+    ec2_client = boto3.client('ec2')
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('YourTableName')
+    # Get the ECS cluster and container instance associated with the EC2 instance
+    response = ec2_client.describe_instances(InstanceIds=[instance_id])
+    tags = response['Reservations'][0]['Instances'][0].get('Tags', [])
+    
+    cluster_name = None
+    for tag in tags:
+        if tag['Key'] == 'aws:ecs:clusterName':
+            cluster_name = tag['Value']
+            break
 
-def get_item_with_retries(key):
-    max_retries = 5
-    retry_count = 0
-    backoff_time = 1  # Initial backoff time in seconds
+    if not cluster_name:
+        print(f"No ECS cluster found for instance {instance_id}")
+        return
 
-    while retry_count < max_retries:
-        try:
-            response = table.get_item(Key=key)
-            return response['Item']
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ProvisionedThroughputExceededException':
-                retry_count += 1
-                logger.warning(f"Throttling detected. Retrying {retry_count}/{max_retries} after {backoff_time} seconds...")
-                time.sleep(backoff_time)
-                backoff_time *= 2  # Exponential backoff
-            else:
-                raise e
-    raise Exception("Max retries exceeded")
+    # Get the container instance ID associated with the EC2 instance
+    container_instance_arn = None
+    response = ecs_client.list_container_instances(cluster=cluster_name)
+    for container_instance in response['containerInstanceArns']:
+        details = ecs_client.describe_container_instances(
+            cluster=cluster_name,
+            containerInstances=[container_instance]
+        )
+        if details['containerInstances'][0]['ec2InstanceId'] == instance_id:
+            container_instance_arn = container_instance
+            break
 
-# Usage
-item_key = {'PrimaryKey': 'YourPrimaryKeyValue'}
-try:
-    item = get_item_with_retries(item_key)
-    logger.info(f"Successfully retrieved item: {item}")
-except Exception as e:
-    logger.error(f"Failed to retrieve item: {e}")
+    if container_instance_arn:
+        # List the running tasks on the container instance
+        tasks = ecs_client.list_tasks(cluster=cluster_name, containerInstance=container_instance_arn)
+        if tasks['taskArns']:
+            response = ecs_client.describe_tasks(cluster=cluster_name, tasks=tasks['taskArns'])
+            for task in response['tasks']:
+                print(f"Running service: {task['taskDefinitionArn']}")
+        else:
+            print(f"No tasks running on the instance {instance_id} in ECS cluster {cluster_name}.")
+    else:
+        print(f"No container instance found for EC2 instance {instance_id} in ECS cluster {cluster_name}.")
+
+# Replace with your instance ID
+instance_id = "i-xxxxxxxxxxxxxxxxx"
+get_ecs_services_from_instance(instance_id)
+```
+
+### 2. **Use Systems Manager to List Running Services:**
+
+```python
+import boto3
+
+def list_running_services_via_ssm(instance_id):
+    ssm_client = boto3.client('ssm')
+    
+    try:
+        # Send a command to list running services on the instance
+        response = ssm_client.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={'commands': ['systemctl list-units --type=service --state=running']}
+        )
+
+        command_id = response['Command']['CommandId']
+
+        # Get the command output
+        output = ssm_client.get_command_invocation(
+            CommandId=command_id,
+            InstanceId=instance_id
+        )
+
+        print("Running services on instance:")
+        print(output['StandardOutputContent'])
+
+    except ssm_client.exceptions.InvalidInstanceId:
+        print(f"The instance {instance_id} is not managed by Systems Manager.")
+    except ssm_client.exceptions.InvocationDoesNotExist:
+        print(f"No command found for the instance {instance_id}.")
+
+# Replace with your instance ID
+instance_id = "i-xxxxxxxxxxxxxxxxx"
+list_running_services_via_ssm(instance_id)
+```
+
+### Summary:
+1. **`get_ecs_services_from_instance`:** This script checks if an EC2 instance is part of an ECS cluster and retrieves running ECS tasks on that instance.
+2. **`list_running_services_via_ssm`:** This script uses AWS Systems Manager (SSM) to remotely execute a command on the EC2 instance to list all running services using `systemctl`.
+
+**Note:** For the SSM script to work, the instance must have the SSM agent installed and be configured for Systems Manager. Ensure that the EC2 instance has the appropriate IAM role attached with `AmazonEC2RoleforSSM` permissions.
